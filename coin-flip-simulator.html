@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coin Flip Simulator</title>
+  <meta name="description" content="Simulate coin flips and visualise the outcome distribution in real time." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #ffffff;
+      --bg2:       #f5f4f0;
+      --text:      #1a1a18;
+      --text2:     #6b6a65;
+      --border:    rgba(0,0,0,0.12);
+      --amber-bg:  #FAEEDA;
+      --amber-mid: #EF9F27;
+      --amber-dk:  #BA7517;
+      --amber-dkk: #412402;
+      --blue-bg:   #E6F1FB;
+      --blue-mid:  #378ADD;
+      --blue-dk:   #185FA5;
+      --blue-dkk:  #042C53;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:        #1c1c1a;
+        --bg2:       #262624;
+        --text:      #efefed;
+        --text2:     #9a9991;
+        --border:    rgba(255,255,255,0.12);
+        --amber-bg:  #412402;
+        --amber-mid: #EF9F27;
+        --amber-dk:  #FAC775;
+        --amber-dkk: #FAEEDA;
+        --blue-bg:   #042C53;
+        --blue-mid:  #378ADD;
+        --blue-dk:   #85B7EB;
+        --blue-dkk:  #E6F1FB;
+      }
+    }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem 4rem;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header h1 {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+    header p {
+      font-size: 0.95rem;
+      color: var(--text2);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+      padding: 1.25rem 1.5rem;
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .controls label {
+      font-size: 0.875rem;
+      color: var(--text2);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      white-space: nowrap;
+    }
+    .controls input[type="number"] {
+      width: 110px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .controls input[type="number"]:focus { border-color: var(--amber-mid); }
+    .controls button {
+      padding: 8px 20px;
+      font-size: 0.875rem;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-weight: 500;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .controls button:hover  { opacity: 0.85; }
+    .controls button:active { transform: scale(0.97); }
+    .controls button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── Coin ── */
+    .coin-stage {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 0 0.75rem;
+      perspective: 700px;
+    }
+    .coin {
+      width: 128px;
+      height: 128px;
+      position: relative;
+      transform-style: preserve-3d;
+      transform: rotateY(0deg);
+    }
+    .face {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backface-visibility: hidden;
+      border: 3px solid;
+    }
+    .face::after {
+      content: '';
+      position: absolute;
+      inset: 9px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(0,0,0,0.10);
+      pointer-events: none;
+    }
+    .face-heads {
+      background: var(--amber-bg);
+      color: var(--amber-dkk);
+      border-color: var(--amber-mid);
+    }
+    .face-tails {
+      background: var(--blue-bg);
+      color: var(--blue-dkk);
+      border-color: var(--blue-mid);
+      transform: rotateY(180deg);
+    }
+    .face-letter {
+      font-size: 54px;
+      font-weight: 700;
+      line-height: 1;
+      font-family: Georgia, serif;
+      user-select: none;
+    }
+
+    /* ── Log ── */
+    .log {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text2);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 20px;
+      margin: 0.75rem 0 1.75rem;
+    }
+
+    /* ── Stats grid ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 1.75rem;
+    }
+    @media (max-width: 480px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      text-align: center;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text2);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 1.45rem;
+      font-weight: 700;
+      font-family: Georgia, serif;
+      color: var(--text);
+    }
+    #v-h { color: var(--amber-dk); }
+    #v-t { color: var(--blue-dk); }
+
+    /* ── Charts ── */
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 520px) { .charts { grid-template-columns: 1fr; } }
+    .chart-block {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem 1.25rem;
+    }
+    .chart-title {
+      font-size: 0.78rem;
+      color: var(--text2);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .legend {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 10px;
+      font-size: 0.75rem;
+      color: var(--text2);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      display: inline-block;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text2);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    footer a { color: var(--text2); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <header>
+      <h1>Coin Flip Simulator</h1>
+      <p>Simulate up to 100,000 flips and watch the law of large numbers in action.</p>
+    </header>
+
+    <div class="controls">
+      <label for="nFlips">Number of flips</label>
+      <input type="number" id="nFlips" min="1" max="100000" value="100" step="1" />
+      <button id="btnFlip" onclick="runSim()">Flip the coin &#8599;</button>
+    </div>
+
+    <div class="coin-stage">
+      <div class="coin" id="coin" aria-label="Animated coin showing heads or tails">
+        <div class="face face-heads"><span class="face-letter">H</span></div>
+        <div class="face face-tails"><span class="face-letter">T</span></div>
+      </div>
+    </div>
+
+    <p class="log" id="log" aria-live="polite">Choose how many times to flip and press the button.</p>
+
+    <div class="stats" role="region" aria-label="Simulation results">
+      <div class="stat-card"><p class="stat-label">Heads</p><p class="stat-value" id="v-h">—</p></div>
+      <div class="stat-card"><p class="stat-label">Tails</p><p class="stat-value" id="v-t">—</p></div>
+      <div class="stat-card"><p class="stat-label">Heads %</p><p class="stat-value" id="v-hp">—</p></div>
+      <div class="stat-card"><p class="stat-label">Tails %</p><p class="stat-value" id="v-tp">—</p></div>
+    </div>
+
+    <div class="charts">
+      <div class="chart-block">
+        <p class="chart-title">Outcome distribution</p>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:#EF9F27"></span>Heads</span>
+          <span><span class="legend-dot" style="background:#378ADD"></span>Tails</span>
+        </div>
+        <div style="position:relative;height:190px;">
+          <canvas id="cBar" role="img" aria-label="Bar chart showing heads vs tails count">No data yet.</canvas>
+        </div>
+      </div>
+      <div class="chart-block">
+        <p class="chart-title">Relative frequency convergence</p>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:#EF9F27"></span>Heads %</span>
+          <span><span class="legend-dot" style="background:#aaa;border:1px dashed #888"></span>50%</span>
+        </div>
+        <div style="position:relative;height:190px;">
+          <canvas id="cLine" role="img" aria-label="Line chart showing convergence of heads frequency toward 50%">No data yet.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Built with <a href="https://www.chartjs.org/" target="_blank" rel="noopener">Chart.js</a> &mdash; pure HTML, CSS &amp; JavaScript &mdash; no build step required.</p>
+    </footer>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script>
+    'use strict';
+
+    let cBar, cLine;
+
+    function initCharts() {
+      if (cBar)  cBar.destroy();
+      if (cLine) cLine.destroy();
+
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const gridColor  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+      const tickColor  = isDark ? '#9a9991' : '#6b6a65';
+
+      cBar = new Chart(document.getElementById('cBar'), {
+        type: 'bar',
+        data: {
+          labels: ['Heads (H)', 'Tails (T)'],
+          datasets: [{
+            data: [0, 0],
+            backgroundColor: ['#EF9F27', '#378ADD'],
+            borderWidth: 0,
+            borderRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: gridColor },
+              ticks: { font: { size: 11 }, color: tickColor }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 12 }, color: tickColor, autoSkip: false }
+            }
+          }
+        }
+      });
+
+      cLine = new Chart(document.getElementById('cLine'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              data: [],
+              borderColor: '#EF9F27',
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false,
+              tension: 0.25
+            },
+            {
+              data: [],
+              borderColor: 'rgba(140,140,140,0.6)',
+              borderWidth: 1.5,
+              borderDash: [5, 4],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              grid: { color: gridColor },
+              ticks: { callback: v => v + '%', font: { size: 11 }, color: tickColor }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11 }, color: tickColor, maxTicksLimit: 5, autoSkip: true }
+            }
+          }
+        }
+      });
+    }
+
+    function animateCoin(n, isHeads, onComplete) {
+      const el = document.getElementById('coin');
+      el.style.transition = '';
+      let angle = 0;
+      let speed = 26;
+      let frame = 0;
+      const totalFrames = Math.min(170, 55 + Math.min(n, 600) * 0.14);
+
+      (function loop() {
+        frame++;
+        if (frame > totalFrames * 0.6) speed = Math.max(3.5, speed * 0.91);
+        angle += speed;
+        el.style.transform = 'rotateY(' + angle + 'deg)';
+        if (frame < totalFrames) {
+          requestAnimationFrame(loop);
+        } else {
+          const base  = Math.ceil(angle / 360) * 360;
+          const final = isHeads ? base : base + 180;
+          el.style.transition = 'transform 0.55s ease-out';
+          el.style.transform  = 'rotateY(' + final + 'deg)';
+          setTimeout(() => { el.style.transition = ''; onComplete(); }, 600);
+        }
+      })();
+    }
+
+    function runSim() {
+      const n = parseInt(document.getElementById('nFlips').value, 10);
+      if (isNaN(n) || n < 1 || n > 100000) {
+        document.getElementById('log').textContent = 'Please enter a number between 1 and 100,000.';
+        return;
+      }
+
+      const btn = document.getElementById('btnFlip');
+      btn.disabled = true;
+      document.getElementById('log').textContent = 'Simulating ' + n.toLocaleString('en') + ' flips\u2026';
+
+      /* ── Simulate ── */
+      const results = new Array(n);
+      let heads = 0;
+      for (let i = 0; i < n; i++) {
+        results[i] = Math.random() < 0.5;
+        if (results[i]) heads++;
+      }
+      const tails = n - heads;
+
+      /* ── Animate, then update UI ── */
+      animateCoin(n, results[n - 1], () => {
+        document.getElementById('v-h').textContent  = heads.toLocaleString('en');
+        document.getElementById('v-t').textContent  = tails.toLocaleString('en');
+        document.getElementById('v-hp').textContent = (heads / n * 100).toFixed(1) + '%';
+        document.getElementById('v-tp').textContent = (tails / n * 100).toFixed(1) + '%';
+        document.getElementById('log').textContent  =
+          heads.toLocaleString('en') + ' heads and ' + tails.toLocaleString('en') +
+          ' tails out of ' + n.toLocaleString('en') + ' flips';
+
+        /* Bar chart */
+        cBar.data.datasets[0].data = [heads, tails];
+        cBar.update();
+
+        /* Convergence line (up to 300 sample points) */
+        const pts  = Math.min(n, 300);
+        const step = Math.max(1, Math.floor(n / pts));
+        const lbls = [], pct = [], ref = [];
+        let ch = 0;
+        for (let i = 0; i < n; i++) {
+          if (results[i]) ch++;
+          if ((i + 1) % step === 0 || i === n - 1) {
+            lbls.push(i + 1);
+            pct.push(+((ch / (i + 1)) * 100).toFixed(2));
+            ref.push(50);
+          }
+        }
+        cLine.data.labels            = lbls;
+        cLine.data.datasets[0].data  = pct;
+        cLine.data.datasets[1].data  = ref;
+        cLine.update();
+
+        btn.disabled = false;
+      });
+    }
+
+    /* Keyboard shortcut: Enter triggers the simulation */
+    document.getElementById('nFlips').addEventListener('keydown', e => {
+      if (e.key === 'Enter') runSim();
+    });
+
+    initCharts();
+  </script>
+</body>
+</html>
